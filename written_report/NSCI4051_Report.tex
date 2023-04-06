@@ -1,0 +1,50 @@
+\documentclass[11pt,a4paper]{article}
+\input{myPreliminary}
+
+\newcounter{magicrownumbers}
+\newcommand\rownumber{\stepcounter{magicrownumbers}\arabic{magicrownumbers}}
+
+\usepackage[table]{xcolor}
+%------------------------------------------------------------------------------
+
+\begin{document}
+    
+    % Page 0 for names and table of contents
+    \thispagestyle{empty}
+    \pagenumbering{gobble} 
+    \title{\textsc{NSCI 4051} -- Workshop on Data Sciences}
+    \author{
+        LAW Yiu Leung Eric (SID: \texttt{1155149315})
+    }
+    \date{\today}
+    \maketitle
+
+    \begin{center}
+        Instructor: Dr. Edmond Chan
+    \end{center}
+    
+    \pagestyle{plain} 
+    % \pagenumbering{roman}
+    
+    \tableofcontents
+    \listoffigures
+    \listoftables
+    
+    \newpage
+    
+    % Section 1
+    \pagenumbering{arabic}
+    \pagestyle{fancy}
+    \setcounter{page}{1}
+    
+    % Emotion Detection
+    \section{Introduction}
+    
+    
+    
+    \section{Bibliography}
+    \bibliographystyle{unsrt}
+    % \bibliographystyle{plain} % We choose the "plain" reference style
+    \bibliography{refs} % Entries are in the refs.bib file
+    
+\end{document}
