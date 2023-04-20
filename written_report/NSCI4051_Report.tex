@@ -30,6 +30,7 @@
     \tableofcontents
     \listoffigures
     \listoftables
+    \lstlistoflistings
     
     \newpage
 
@@ -120,17 +121,36 @@
         \label{fig:event_name_table}
     \end{figure}
 
+    \subsection{Number of Log Data}
+    \label{sec:no_log}
+    Time series log data are recorded when an event is recorded, we could count the number of events by level to see the average number of events per question level.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width = 0.9\textwidth]{EDA_plot/event_per_question.pdf}
+        \caption{Average Number of Events per Question Level}
+        \label{fig:event_per_question}
+    \end{figure}
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width = 0.9\textwidth]{EDA_plot/event_per_question_individual.pdf}
+        \caption{Average Number of Events per Question Level: Individual Examples}
+        \label{fig:event_per_question_individual}
+    \end{figure}
+
     \subsection{Coordinate Features}
     \textit{room\_coor\_x}, \textit{room\_coor\_y}, \textit{screen\_coor\_x} and \textit{screen\_coor\_y} are coordinate features. We can try to plot the coordinates and have a brief understanding of what they look like. \\
     The patterns across different sessions are alike, where some noticeable clusters of clicks in certain regions. There are at least two potential button clusters, namely top left and bottom right. Players repeatedly navigated between these two clusters, resulting concentration of lines in the diagonal direction. These coordinates are probably a wealth of information, however in order to utilize it, that requires higher machine learning techniques. For example, treat it as image and use computer vision to analysis.
     \begin{figure}[H]
         \centering
+        \includegraphics[width = 0.9\textwidth]{EDA_plot/corrdinates_0.pdf}
+        \includegraphics[width = 0.9\textwidth]{EDA_plot/corrdinates_100.pdf}
         \includegraphics[width = 0.9\textwidth]{EDA_plot/corrdinates_1000.pdf}
         \caption{Coordinate Features}
         \label{fig:coordinate}
     \end{figure}
 
     \subsection{Labels}
+    \label{sec:labels}
     As the target of our prediction task, the goal is the predict the whether the session have correct answer on specific question. In total, about 70\% correct and 30\% incorrect, indicate that the dataset is slightly imbalanced.
     \begin{figure}[H]
         \centering
@@ -143,6 +163,7 @@
             \centering
             \includegraphics[width=\textwidth]{EDA_plot/correct_ratios.pdf} % second figure itself
             \caption{Correct Ratios}
+            \label{fig:correct_ratios}
         \end{minipage}
     \end{figure}
     
@@ -158,36 +179,159 @@
     
     \subsection{Preprocessed Datasets}
     The feature engineering procedure is separately perform by \textit{level\_group}: ['0-4', '5-12', '13-22'] which is the level group of the question, then 3 datasets are generated. After dropping features with $> 90\%$ missing ratio and features only have single unique value, the datasets contain 599, 914 and 1059 features respectively in each level group, all contain 11,779 rows representing every unique sessions.
+    \begin{align*}
+        \text{datasets } S^{(n)} &= \left( x_i^{(n)}, y_i^{(n)} \right) \text{ for } i = 1, ..., N^{(n)} \\
+        x_i^{(n)} &= \left( x_i^{(n, 1)}, x_i^{(n, 2)}, ..., x_i^{(n, K_n)} \right) \text{ for } K \text{ features in } n^\text{th} \text{ dataset} \\
+        \text{where } y_i^{(n)}& \text{ is the target label}
+    \end{align*}
 
     \section{Machine Learning Model Approach}
-    The challenge at hand can be framed as a binary classification problem, wherein the goal is to accurately classify player in each question into one of two possible categories, namely correct and incorrect. Various machine learning models can be utilized to address this task, including logistic regression, deep neural networks, and decision trees. Given the need to strike a balance between model complexity and computational efficiency, we have chosen to utilize a decision tree model in this project. This approach will enable us to effectively and efficiently classify instances based on relevant features and their associated information gain.
+    The challenge at hand can be framed as a binary classification problem, wherein the goal is to accurately classify player in each question into one of two possible categories, namely correct and incorrect. Various machine learning models can be utilized to address this task, including logistic regression, deep neural networks, random forest, etc. Given the need to strike a balance between model complexity and computational efficiency, we have chosen to utilize a random forest model in this project. This approach will enable us to effectively and efficiently classify instances based on relevant features and their associated information gain. \\
+    \\
+    For this classification problem, we have 18 questions to classify, in subsection \ref{sec:no_log} and \ref{sec:labels} shows that there are some patterns regarding question level. It is safe to assume that different questions have various difficulties and features have different level of importance to each question, therefore, it is decided to split the model into 18 individual models.
 
-    \subsection{Decision Tree Model Specifications}
-    
-    \subsection{Group Fold Cross Validation}
-
-    \section{Model Evaluation}
-
-    \subsection{Optimal Prediction Threshold}
-
-    \newpage
-    \subsection{F1 Score}
+    \subsection{Random Forest Model Specifications}
+    Random forest is an ensemble learning method that combines multiple decision trees to improve the accuracy and robustness of the overall model \cite{Cutler2012}. In a random forest, a set of decision trees are trained on different subsets of the training data, and each tree is allowed to make its own prediction. The final prediction is then determined by combining the predictions of all the trees in the forest. This approach helps to reduce the impact of overfitting and noisy data, and improves the generalization performance of the model. Figure \ref{fig:random_forest} illustrate the concept \cite{random_forest}.
     \begin{figure}[H]
         \centering
-        \includegraphics[height = 0.9\textheight]{model_plot/f1_threshold.pdf}
+        \includegraphics[width = 0.9\textwidth]{model_plot/Random-Forest-Algorithm-Dataset-is-split-into-subsamples-and-each-tree-like-structure.pdf}
+        \caption{Random Forest}
+        \label{fig:random_forest}
+    \end{figure}
+
+    \noindent
+    To implement random forest in Python, \texttt{XGBoost} \cite{xgb} library is used, and the parameters are as following:
+    \begin{lstlisting}[language = Python, caption = XGBoost Parameters]
+xgb_params = {
+    'objective' : 'binary:logistic',
+    'eval_metric':'logloss',
+    'learning_rate': 0.05,
+    'max_depth': 4,
+    'n_estimators': 1000,
+    'early_stopping_rounds': 50,
+    'tree_method':'hist',
+    'subsample':0.8,
+    'colsample_bytree': 0.4,
+    'use_label_encoder' : False
+}    \end{lstlisting}
+    \noindent
+    Noted that \textit{early\_stopping\_rounds} is set at 50, that stops the training of the model when the performance on a validation set stops improving. This can help to prevent overfitting by stopping the training before the model starts to fit the training data too closely.
+    
+    \subsection{Group Fold Cross Validation}
+    Overfitting is a common problem in machine learning, where a model becomes too complex and starts to fit the training data too closely. This means that the model is not able to generalize well to new, unseen data, and its performance may suffer. Overfitting can occur when a model is too complex for the amount of data available, or when the model is too flexible and captures noise or irrelevant features in the data. To prevent overfitting, we can use cross-validation (CV) by evaluating the performance of a model on new, unseen data. Group fold cross-validation is a variant of k-fold cross-validation. In group fold cross-validation, the data is divided into $K$ folds as in Figure \ref{fig:group_k_fold} \cite{group_k_fold}, but the folds are created in such a way that each fold contains one or more groups, and the groups are not split across the folds. This ensures that the model is tested on data that is truly independent of the data it was trained on.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width = 0.8\textwidth]{model_plot/sphx_glr_plot_cv_indices_004.png}
+        \caption{Group K Fold Cross Validation}
+        \label{fig:group_k_fold}
+    \end{figure}
+
+    \noindent
+    Let set $K = 5$ and adopt 5 groups fold cross-validation, in this case, $5 \times 18 = 90$ model training are required to find the optimal models.
+
+    \newpage
+    \section{Model Evaluation}
+    Once the model training is completed, it is necessary to perform model evaluation and compute the cross-validation F1 scores. This step is crucial in assessing the performance of the trained model and determining its ability to generalize to new data.
+
+    \subsection{Optimal Prediction Threshold}
+    Since the random forest is set on binary logistic classification, that is going to return a probability $p$ on whether the target is 0 or 1 based on a threshold $t$, by default, the threshold $t = 0.5$. However, the threshold $t$ can be set by ourself, such that we can find optimal threshold such that F1 score is optimized. The range of threshold is set be to [0.4, 0.8] as a reasonable range.
+    \begin{gather*} 
+        0 \leq p_i \leq 1 \\ 
+        0.4 \leq t_i \leq 0.8 \\
+        \text{target } \hat{y_i} =
+        \begin{cases}
+            1 & \text{if } p_i \geq t_i \\
+            0 & \text{if } p_i < t_i
+        \end{cases}
+    \end{gather*}
+    
+    \subsection{F1 Score}
+    confusion matrix can show the summary of prediction and will be used to calculate accuracy, precision, recall and F1-score. 
+    \begin{table}[H]
+        \centering
+        \begin{tabular}{c|c|c}
+             & \multicolumn{2}{c}{\textbf{True Class}} \\
+            \hline
+            % \parbox[t]{2mm}{\multirow{2}{*}{\rotatebox[origin=c]{90}{Predicted Class}}}
+            \multirow{2}{*}{\textbf{Predicted Class}} & True Positive (TP) & False Positive (FP) \\
+            \cline{2-3}
+             & False Negative (FN) & True Negative (TN)
+        \end{tabular}
+        \caption{Confusion Matrix}
+        \label{tab:confusion_matrix}
+    \end{table}
+
+    \[
+        \text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}
+        \quad \text{ and } \quad
+        \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}
+    \]
+    
+    \[
+        \text{F1 Score} 
+        = \frac{2}{\frac{1}{\text{Precision}} + \frac{1}{\text{Recall}}}
+        = \frac{2 \times \text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}
+    \]
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height = 0.95\textheight]{model_plot/f1_threshold.pdf}
         \caption{F1 Score vs Threshold}
         \label{fig:f1_score}
     \end{figure}
 
-    \section{Conclusion}
+    \newpage
+    The best F1 Scores of each questions and folds:
+    \begin{table}[H]
+        \centering
+        \begin{tabular}{l|rrrrr|c}
+            Question & fold 1 & fold 2 & fold 3 & fold 4 & fold 5 & Optimal Threshold\\
+            \hline \hline
+            1 & \textbf{0.8936} & 0.8788 & 0.8785 & 0.8789 & 0.8886 & 0.54 \\
+            2 & 0.9945 & 0.9939 & \textbf{0.9951} & 0.9948 & 0.9941 & 0.80 \\
+            3 & 0.9724 & 0.9739 & \textbf{0.9754} & 0.9737 & 0.9744 & 0.77 \\
+            4 & 0.9129 & \textbf{0.9153} & 0.9114 & 0.9103 & 0.9109 & 0.61 \\
+            5 & 0.8065 & 0.7989 & 0.7738 & \textbf{0.8342} & 0.7908 & 0.48  \\
+            6 & \textbf{0.9103} & 0.9021 & 0.9001 & 0.8989 & 0.8996 & 0.63 \\
+            7 & 0.8982 & 0.8788 & \textbf{0.9047} & 0.8748 & 0.8830 & 0.59 \\
+            8 & \textbf{0.7978} & 0.7865 & 0.7913 & 0.7753 & 0.7923 & 0.54 \\
+            9 & 0.8733 & 0.8811 & 0.8844 & 0.8733 & \textbf{0.8960} & 0.60 \\
+            10 & 0.7635 & 0.7485 & 0.7501 & 0.7478 & \textbf{0.7747} & 0.47 \\
+            11 & 0.8270 & 0.8225 & 0.8140 & \textbf{0.8548} & 0.8274 & 0.57 \\
+            12 & 0.9400 & 0.9328 & 0.9325 & 0.9369 & \textbf{0.9533} & 0.73 \\
+            13 & \textbf{0.7009} & 0.5888 & 0.5952 & 0.5141 & 0.6468 & 0.40 \\
+            14 & 0.8676 & 0.8600 & 0.8669 & \textbf{0.8806} & 0.8641 & 0.59 \\
+            15 & 0.7568 & 0.7506 & \textbf{0.7871} & 0.7419 & 0.7678 & 0.47 \\
+            16 & 0.8751 & 0.8708 & \textbf{0.8789} & 0.8619 & 0.8631 & 0.67 \\
+            17 & 0.8346 & 0.8374 & 0.8395 & 0.8328 & \textbf{0.8445} & 0.59 \\
+            18 & \textbf{0.9892} & 0.9824 & 0.9874 & 0.9892 & 0.9802 & 0.79 \\
+            \hline
+            Overall & & & 0.8930 & 
+        \end{tabular}
+        \caption{F1 Scores}
+        \label{tab:f1_scores}
+    \end{table}
 
-    \subsection{Possible Improvement}
+    \noindent
+    Most of the questions have convex optimal point for threshold, except question 2 and 13, their F1 score just keep increasing and decreasing respectively. That could be explained by Figure \ref{fig:correct_ratios}, as question 2 have highest correct ratio and question 13 have lowest correct ratio. Due to the distribution of significantly imbalanced datasets, the models are biased to predict them all correct or all incorrect. Generally speaking, The correct ratio and optimal threshold are positively correlated, higher correct ratio makes the optimal threshold higher and vice versa.
+
+    \section{Conclusion}
+    In conclusion, the results of this study demonstrate that using random forest models for binary classification tasks can be effective when considering sub-groups. The models trained for each questions showed promising results with F1 scores ranging from 0.7009 to 9951, in whole, all models combined achieve an overall F1 score 0.8930. These findings suggest that the model has the potential to be used in practical applications for each sub-group. However, it is important to continue monitoring the model's performance over time to ensure that it remains effective and accurate. \\
+    \\
+    In addition to training and evaluating the random forest models, feature engineering was also conducted to improve the performance of the models. The feature engineering process involved the creation of new features based on data exploration techniques. These new features were then incorporated into the models to improve their predictive power.
+    
+    \subsection{Limitations and Potential Improvement}
+    The main limitation of this study is the presence of imbalanced dataset. Specifically, there were significantly more instances of one class than the other, which can lead to biased model performance and inaccurate predictions. That could be further improved by advanced techniques on imbalanced training and finding the best classification threshold in imbalanced classification \cite{ZOU20162}. \\
+    \\
+    Another potential improvement is to convolutional neural networks (CNNs) for time series analysis \cite{7870510}. Using CNNs for time series analysis is a promising area for future research and may lead to improved predictive performance in this domain. It is important to note, however, that the implementation of CNNs can be computationally expensive and may require more training data than other models. Therefore, careful consideration and experimentation would be needed to determine the optimal approach for this task.
 
     \newpage
     \section{Bibliography}
     \nocite{simple_xgb, detailed_eda}
-    
-    \bibliographystyle{unsrt}
+
+    \bibliographystyle{ieeetr}
+    % \bibliographystyle{unsrt}
     % \bibliographystyle{plain} % We choose the "plain" reference style
     \bibliography{refs} % Entries are in the refs.bib file
 
